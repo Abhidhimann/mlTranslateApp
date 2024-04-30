@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/container_bg"
+    tools:context=".view.MainActivity">
+
+    <include
+        android:id="@+id/toolbar"
+        layout="@layout/toolbar_layout" />
+
+    <Spinner
+        android:id="@+id/FromLang"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:background="@drawable/round_corner"
+        android:elevation="10dp"
+        android:entries="@array/languages_array"
+        app:layout_constraintBottom_toTopOf="@id/sourceText"
+        app:layout_constraintEnd_toStartOf="@+id/interchangeLang"
+        app:layout_constraintHorizontal_chainStyle="spread"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/toolbar"
+        app:layout_constraintWidth_percent="0.4" />
+
+    <ImageView
+        android:id="@+id/interchangeLang"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="?android:selectableItemBackgroundBorderless"
+        android:padding="8dp"
+        android:src="@drawable/interchange_vector"
+        app:layout_constraintBottom_toTopOf="@id/sourceText"
+        app:layout_constraintEnd_toStartOf="@id/ToLang"
+        app:layout_constraintStart_toEndOf="@id/FromLang"
+        app:layout_constraintTop_toBottomOf="@id/toolbar"
+        app:layout_constraintWidth_percent="0.1" />
+
+    <Spinner
+        android:id="@+id/ToLang"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:background="@drawable/round_corner"
+        android:elevation="10dp"
+        android:entries="@array/languages_array"
+        app:layout_constraintBottom_toTopOf="@id/sourceText"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/interchangeLang"
+        app:layout_constraintTop_toBottomOf="@id/toolbar"
+        app:layout_constraintWidth_percent="0.4" />
+
+
+    <EditText
+        android:id="@+id/sourceText"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:background="@drawable/round_corner"
+        android:elevation="8dp"
+        android:gravity="top|left"
+        android:hint="@string/source_text_hint"
+        android:inputType="textMultiLine"
+        android:paddingStart="6dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="6dp"
+        android:paddingBottom="36dp"
+        android:textSize="32sp"
+        app:layout_constraintBottom_toTopOf="@id/translate"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHeight_percent="0.3"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/interchangeLang"
+        tools:text="@tools:sample/lorem/random" />
+
+    <ImageView
+        android:id="@+id/sourceTextTalk"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/text_speech_des"
+        android:elevation="8dp"
+        android:foreground="?android:selectableItemBackgroundBorderless"
+        android:padding="8dp"
+        android:src="@drawable/text_speech_icon"
+        app:layout_constraintBottom_toBottomOf="@id/sourceText"
+        app:layout_constraintEnd_toStartOf="@id/sourceTextCopy" />
+
+    <ImageView
+        android:id="@+id/sourceTextCopy"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/text_copy_des"
+        android:elevation="8dp"
+        android:foreground="?android:selectableItemBackgroundBorderless"
+        android:padding="8dp"
+        android:src="@drawable/content_copy"
+        app:layout_constraintBottom_toBottomOf="@id/sourceText"
+        app:layout_constraintEnd_toStartOf="@id/sourceTextClear" />
+
+    <ImageView
+        android:id="@+id/sourceTextClear"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="6dp"
+        android:contentDescription="@string/text_clear_des"
+        android:elevation="8dp"
+        android:foreground="?android:selectableItemBackgroundBorderless"
+        android:padding="8dp"
+        android:src="@drawable/clear_24"
+        app:layout_constraintBottom_toBottomOf="@id/sourceText"
+        app:layout_constraintEnd_toEndOf="@id/sourceText" />
+
+    <androidx.constraintlayout.widget.Barrier
+        android:id="@+id/micAndStopBarrier"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:barrierDirection="end"
+        app:constraint_referenced_ids="sourceTextMic, sourceTextListenStop" />
+
+
+    <ImageView
+        android:id="@+id/sourceTextMic"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:background="?android:selectableItemBackgroundBorderless"
+        android:contentDescription="@string/speak_sentence"
+        android:elevation="2dp"
+        android:src="@drawable/mic_24"
+        app:layout_constraintBottom_toTopOf="@id/resultText"
+        app:layout_constraintEnd_toStartOf="@id/translate"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/sourceText" />
+
+    <ImageView
+        android:id="@+id/sourceTextListenStop"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:background="?android:selectableItemBackgroundBorderless"
+        android:contentDescription="@string/speak_sentence"
+        android:elevation="2dp"
+        android:src="@drawable/stop_listener_24"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/resultText"
+        app:layout_constraintEnd_toStartOf="@id/translate"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/sourceText" />
+
+
+    <Button
+        android:id="@+id/translate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:enabled="false"
+        android:text="@string/translate_button_text"
+        app:layout_constraintBottom_toTopOf="@id/resultText"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/micAndStopBarrier"
+        app:layout_constraintTop_toBottomOf="@+id/sourceText"
+        app:layout_constraintVertical_chainStyle="packed" />
+
+    <EditText
+        android:id="@+id/resultText"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:background="@drawable/round_corner"
+        android:elevation="8dp"
+        android:enabled="false"
+        android:gravity="top|left"
+        android:inputType="textMultiLine"
+        android:paddingStart="6dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="6dp"
+        android:paddingBottom="36dp"
+        android:textSize="32sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHeight_percent="0.3"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/translate"
+        tools:text="@tools:sample/lorem/random" />
+
+    <ImageView
+        android:id="@+id/resultTextTalk"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/text_speech_des"
+        android:elevation="8dp"
+        android:foreground="?android:selectableItemBackgroundBorderless"
+        android:padding="8dp"
+        android:src="@drawable/text_speech_icon"
+        app:layout_constraintBottom_toBottomOf="@id/resultText"
+        app:layout_constraintEnd_toStartOf="@id/resultTextCopy" />
+
+    <ImageView
+        android:id="@+id/resultTextCopy"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/text_copy_des"
+        android:elevation="8dp"
+        android:foreground="?android:selectableItemBackgroundBorderless"
+        android:padding="8dp"
+        android:src="@drawable/content_copy"
+        app:layout_constraintBottom_toBottomOf="@id/resultText"
+        app:layout_constraintEnd_toStartOf="@id/resultTextClear" />
+
+    <ImageView
+        android:id="@+id/resultTextClear"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="6dp"
+        android:contentDescription="@string/text_clear_des"
+        android:elevation="8dp"
+        android:foreground="?android:selectableItemBackgroundBorderless"
+        android:padding="8dp"
+        android:src="@drawable/clear_24"
+        app:layout_constraintBottom_toBottomOf="@id/resultText"
+        app:layout_constraintEnd_toEndOf="@id/resultText" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

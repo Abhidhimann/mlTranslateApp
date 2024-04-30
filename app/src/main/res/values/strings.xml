@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">TempApplication</string>
+    <string name="title_activity_main2">MainActivity2</string>
+    <string name="source_text_hint">Enter Text</string>
+    <string name="text_speech_des">Listen</string>
+    <string name="text_copy_des">Copy Text</string>
+    <string name="text_clear_des">Clear Text</string>
+    <string name="translate_button_text">translate</string>
+    <string name="speak_sentence">Speak Sentence</string>
+</resources>
