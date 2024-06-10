@@ -20,7 +20,6 @@
         android:entries="@array/languages_array"
         app:layout_constraintBottom_toTopOf="@id/sourceText"
         app:layout_constraintEnd_toStartOf="@+id/interchangeLang"
-        app:layout_constraintHorizontal_chainStyle="spread"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/toolbar"
         app:layout_constraintWidth_percent="0.4" />
@@ -51,6 +50,12 @@
         app:layout_constraintTop_toBottomOf="@id/toolbar"
         app:layout_constraintWidth_percent="0.4" />
 
+    <androidx.constraintlayout.widget.Barrier
+        android:id="@+id/spinnersAndInterchangeBarrier"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:barrierDirection="bottom"
+        app:constraint_referenced_ids="FromLang,ToLang, interchangeLang" />
 
     <EditText
         android:id="@+id/sourceText"
@@ -66,11 +71,12 @@
         android:paddingEnd="6dp"
         android:paddingBottom="36dp"
         android:textSize="32sp"
-        app:layout_constraintBottom_toTopOf="@id/translate"
+        app:layout_constraintBottom_toTopOf="@id/resultText"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHeight_percent="0.3"
+        app:layout_constraintHeight_percent="0.33"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/interchangeLang"
+        app:layout_constraintTop_toBottomOf="@id/spinnersAndInterchangeBarrier"
+        app:layout_constraintVertical_chainStyle="packed"
         tools:text="@tools:sample/lorem/random" />
 
     <ImageView
@@ -110,58 +116,11 @@
         app:layout_constraintBottom_toBottomOf="@id/sourceText"
         app:layout_constraintEnd_toEndOf="@id/sourceText" />
 
-    <androidx.constraintlayout.widget.Barrier
-        android:id="@+id/micAndStopBarrier"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:barrierDirection="end"
-        app:constraint_referenced_ids="sourceTextMic, sourceTextListenStop" />
-
-
-    <ImageView
-        android:id="@+id/sourceTextMic"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:background="?android:selectableItemBackgroundBorderless"
-        android:contentDescription="@string/speak_sentence"
-        android:elevation="2dp"
-        android:src="@drawable/mic_24"
-        app:layout_constraintBottom_toTopOf="@id/resultText"
-        app:layout_constraintEnd_toStartOf="@id/translate"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/sourceText" />
-
-    <ImageView
-        android:id="@+id/sourceTextListenStop"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:background="?android:selectableItemBackgroundBorderless"
-        android:contentDescription="@string/speak_sentence"
-        android:elevation="2dp"
-        android:src="@drawable/stop_listener_24"
-        android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@id/resultText"
-        app:layout_constraintEnd_toStartOf="@id/translate"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/sourceText" />
-
-
-    <Button
-        android:id="@+id/translate"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:enabled="false"
-        android:text="@string/translate_button_text"
-        app:layout_constraintBottom_toTopOf="@id/resultText"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/micAndStopBarrier"
-        app:layout_constraintTop_toBottomOf="@+id/sourceText"
-        app:layout_constraintVertical_chainStyle="packed" />
-
     <EditText
         android:id="@+id/resultText"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:layout_marginTop="20dp"
         android:background="@drawable/round_corner"
         android:elevation="8dp"
         android:enabled="false"
@@ -171,12 +130,13 @@
         android:paddingTop="6dp"
         android:paddingEnd="6dp"
         android:paddingBottom="36dp"
+        android:textColor="@color/result_text_color"
         android:textSize="32sp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/micStopAndTranslateHorizontalBarrier"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHeight_percent="0.3"
+        app:layout_constraintHeight_percent="0.33"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/translate"
+        app:layout_constraintTop_toBottomOf="@id/sourceText"
         tools:text="@tools:sample/lorem/random" />
 
     <ImageView
@@ -215,5 +175,113 @@
         android:src="@drawable/clear_24"
         app:layout_constraintBottom_toBottomOf="@id/resultText"
         app:layout_constraintEnd_toEndOf="@id/resultText" />
+
+    <androidx.constraintlayout.widget.Barrier
+        android:id="@+id/micAndStopBarrier"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:barrierDirection="end"
+        app:constraint_referenced_ids="sourceTextMic, sourceTextListenStop" />
+
+<!--    <LinearLayout-->
+<!--        android:id="@+id/selectImageLayout"-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:background="@drawable/round_corner"-->
+<!--        android:elevation="10dp"-->
+<!--        android:focusableInTouchMode="true"-->
+<!--        android:padding="8dp"-->
+<!--        app:layout_constraintBottom_toTopOf="@id/micStopAndTranslateHorizontalBarrier"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        android:layout_marginBottom="2dp"-->
+<!--        app:layout_constraintStart_toStartOf="parent">-->
+
+<!--        <LinearLayout-->
+<!--            android:layout_width="0dp"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:gravity="center"-->
+<!--            android:layout_weight="1">-->
+
+<!--            <ImageView-->
+<!--                android:layout_width="36dp"-->
+<!--                android:layout_height="36dp"-->
+<!--                android:contentDescription="Gallery"-->
+<!--                android:src="@drawable/gallery" />-->
+
+<!--            <TextView-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_marginStart="4dp"-->
+<!--                android:text="Gallery"-->
+<!--                android:textSize="24sp" />-->
+<!--        </LinearLayout>-->
+
+<!--        <LinearLayout-->
+<!--            android:layout_width="0dp"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:gravity="center"-->
+<!--            android:layout_weight="1">-->
+
+<!--            <ImageView-->
+<!--                android:layout_width="36dp"-->
+<!--                android:layout_height="36dp"-->
+<!--                android:contentDescription="Camera"-->
+<!--                android:src="@drawable/photo_camera" />-->
+
+<!--            <TextView-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:text="Camera"-->
+<!--                android:layout_marginStart="4dp"-->
+<!--                android:textSize="24sp" />-->
+<!--        </LinearLayout>-->
+<!--    </LinearLayout>-->
+
+    <androidx.constraintlayout.widget.Barrier
+        android:id="@+id/micStopAndTranslateHorizontalBarrier"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:barrierDirection="top"
+        app:constraint_referenced_ids="sourceTextMic, sourceTextListenStop, selectImage" />
+
+    <ImageView
+        android:id="@+id/sourceTextMic"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?android:selectableItemBackgroundBorderless"
+        android:contentDescription="@string/speak_sentence"
+        android:elevation="2dp"
+        android:src="@drawable/mic_24"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/selectImage"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/resultText" />
+
+    <ImageView
+        android:id="@+id/sourceTextListenStop"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?android:selectableItemBackgroundBorderless"
+        android:contentDescription="@string/speak_sentence"
+        android:elevation="2dp"
+        android:src="@drawable/stop_listener_24"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/selectImage"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/resultText" />
+
+
+    <ImageView
+        android:id="@+id/selectImage"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:contentDescription="Select image"
+        android:enabled="false"
+        android:src="@drawable/image_select"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/micAndStopBarrier"
+        app:layout_constraintTop_toBottomOf="@+id/resultText" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

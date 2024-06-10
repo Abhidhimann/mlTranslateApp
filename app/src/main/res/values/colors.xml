@@ -9,4 +9,5 @@
     <color name="white">#FFFFFFFF</color>
     <color name="edit_text_background">#FFFFFFFF</color>
     <color name="container_bg">#F5F5F5</color>
+    <color name="result_text_color">#0051B3</color>
 </resources>

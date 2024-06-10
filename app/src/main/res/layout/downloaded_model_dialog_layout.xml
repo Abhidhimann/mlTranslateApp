@@ -3,37 +3,29 @@
 <!-- Linear layout as parent layout-->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
+    android:layout_width="wrap_content"
     android:layout_height="wrap_content"
+    android:layout_gravity="center"
     android:orientation="vertical"
-    android:padding="16dp"
+    android:padding="24dp"
     android:background="@android:color/white"
     >
 
     <TextView
+        android:layout_gravity="start"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Select Language"
+        android:text="Downloaded Models"
         android:textSize="18sp"
+        android:layout_marginBottom="10dp"
         android:textColor="@color/black"
-        />
-
-    <EditText
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/edit_text"
-        android:hint="Search..."
-        android:padding="12dp"
-        android:singleLine="true"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="8dp"
-        android:background="@android:drawable/editbox_background"
         />
 
     <ListView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:id="@+id/list_view"
+        android:listSelector="@android:color/transparent"
+        android:id="@+id/model_list_view"
         />
 
 </LinearLayout>

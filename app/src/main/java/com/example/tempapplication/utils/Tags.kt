@@ -4,6 +4,8 @@ class Tags
 
 fun Any.tempTag() = "tempTag"
 
+fun Any.abhiTag() = "AbhiTag"
+
 const val PERMISSIONS_REQUEST_RECORD_AUDIO = 100
 const val RESULTS_LIMIT = 1
 

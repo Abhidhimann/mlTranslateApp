@@ -10,14 +10,19 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.text.Editable
+import android.text.InputType
 import android.text.TextWatcher
 import android.util.Log
 import android.view.*
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -29,15 +34,20 @@ import com.example.tempapplication.R
 import com.example.tempapplication.TranslateViewModel
 import com.example.tempapplication.databinding.ActivityMainBinding
 import com.example.tempapplication.utils.*
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.coroutines.launch
 import java.util.*
 
 
-// later work change change hardcoded strings
-// changing translation button ui
-// adding seeing models and deleting them
-// optional: text detection by image & voice, maybe dark theme
-// refactor spinner adaptor
+// TODO
+/* later work change change hardcoded strings
+ changing translation button ui
+ adding seeing models and deleting them
+ optional: text detection by image & voice, maybe dark theme
+ refactor spinner adaptor
+ rechecking mic and speaker in different os version
+ keyboard enter key -> translate*/
+
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var fromLangSpinnerAdapter: ArrayAdapter<String>
@@ -45,7 +55,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var textToSpeechSourceText: TextToSpeech
     private lateinit var textToSpeechResultText: TextToSpeech
     private lateinit var fromLangCustomDialog: Dialog
+    private lateinit var selectImageCustomDialog: BottomSheetDialog
     private lateinit var toLangCustomDialog: Dialog
+    private lateinit var downloadedModelDialog: Dialog
+    private var dontShowAlertBoxFlag = false
+    private var isAlertDialogShowing = false
 
     private var speechRecognizer: SpeechRecognizer? = null
     private var recognizerIntent: Intent? = null
@@ -64,30 +78,52 @@ class MainActivity : AppCompatActivity() {
         initialization()
         spinnerListeners()
         textChangeListeners()
-        translationListeners()
         translationObservers()
         textOperationsIconsListeners()
+
+//        binding.sourceText.setOnFocusChangeListener { _, hasFocus ->
+//            binding.sourceTextMic.visibility =
+//                if (hasFocus) View.GONE else View.VISIBLE
+//            binding.translate.visibility =
+//                if (hasFocus) View.GONE else View.VISIBLE
+//        }
+//
+//
+//        binding.sourceText.setOnEditorActionListener { _, i, _ ->
+//            if (i == KeyEvent.KEYCODE_ENDCALL) {
+//                binding.sourceTextMic.visibility = View.VISIBLE
+//                binding.translate.visibility = View.VISIBLE
+//            }
+//            false
+//        }
+
         binding.toolbar.threeDotMenu.setOnClickListener {
             val popupMenu = PopupMenu(this@MainActivity, it)
 
             popupMenu.menuInflater.inflate(R.menu.menu_items, popupMenu.menu)
             popupMenu.setOnMenuItemClickListener { item ->
-                // Handle menu item clicks
                 when (item.itemId) {
                     R.id.models -> {
-                        // Handle menu item 1 click
-                        Toast.makeText(
-                            this@MainActivity,
-                            "Menu Item 1 clicked",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        downloadedModelDialog.show()
                         true
                     }
+
                     else -> false
                 }
             }
             popupMenu.show()
         }
+
+        binding.selectImage.setOnClickListener {
+            myDialog()
+        }
+    }
+
+    private fun myDialog() {
+        selectImageCustomDialog = BottomSheetDialog(this)
+        selectImageCustomDialog.setContentView(R.layout.select_image_dailog_layout)
+        selectImageCustomDialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        selectImageCustomDialog.show()
     }
 
     private fun initialization() {
@@ -96,7 +132,9 @@ class MainActivity : AppCompatActivity() {
         textToSpeechInit()
         fromLangDialogSearchAbleSpinnerInit()
         toLangDialogSearchAbleSpinnerInit()
+        downloadedModelDialogInit()
         initSpeechRecognizer()
+        textContainerInit()
     }
 
     private fun spinnerListeners() {
@@ -112,9 +150,6 @@ class MainActivity : AppCompatActivity() {
         resultTextChangeListener()
     }
 
-    private fun translationListeners() {
-        translateButtonClickListener()
-    }
 
     private fun translationObservers() {
         languageIdentifierObserver()
@@ -161,6 +196,7 @@ class MainActivity : AppCompatActivity() {
                     fromLangCustomDialog.show()
                     true
                 }
+
                 else -> {
                     true
                 }
@@ -176,6 +212,7 @@ class MainActivity : AppCompatActivity() {
                     toLangCustomDialog.show()
                     true
                 }
+
                 else -> {
                     true
                 }
@@ -208,10 +245,6 @@ class MainActivity : AppCompatActivity() {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
                 val view = super.getDropDownView(position, convertView, parent)
                 val textView = view as TextView
-                Log.i(
-                    tempTag(),
-                    "avail and contains ${translateViewModel.availableModels} ${getItem(position)}"
-                )
                 val langCode = translateViewModel.availLanguagesValueToCodeMap[getItem(position)]
                 if (translateViewModel.availableModels.contains(langCode)) {
                     textView.alpha = 1f
@@ -263,8 +296,8 @@ class MainActivity : AppCompatActivity() {
         val screenWidth = displayMetrics.widthPixels
         val screenHeight = displayMetrics.heightPixels
         toLangCustomDialog.window?.setLayout(
-            (screenWidth * 0.5).toInt(),
-            (screenHeight * 0.64).toInt()
+            (screenWidth * 0.6).toInt(),
+            (screenHeight * 0.7).toInt()
         )
         toLangCustomDialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
@@ -280,10 +313,6 @@ class MainActivity : AppCompatActivity() {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
                 val view = super.getDropDownView(position, convertView, parent)
                 val textView = view as TextView
-                Log.i(
-                    tempTag(),
-                    "avail and contains ${translateViewModel.availableModels} ${getItem(position)}"
-                )
                 val langCode = translateViewModel.availLanguagesValueToCodeMap[getItem(position)]
                 if (translateViewModel.availableModels.contains(langCode)) {
                     textView.alpha = 1f
@@ -326,6 +355,61 @@ class MainActivity : AppCompatActivity() {
             )
             toLangCustomDialog.dismiss()
         }
+    }
+
+    private fun downloadedModelDialogInit() {
+        downloadedModelDialog = Dialog(this)
+        downloadedModelDialog.setContentView(R.layout.downloaded_model_dialog_layout)
+        val displayMetrics = resources.displayMetrics
+        val screenHeight = displayMetrics.heightPixels
+        downloadedModelDialog.window?.setLayout(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            (screenHeight * 0.6).toInt()
+        )
+        downloadedModelDialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        val listView: ListView = downloadedModelDialog.findViewById(R.id.model_list_view)
+
+        val adapter: ArrayAdapter<String> = object : ArrayAdapter<String>(
+            this@MainActivity,
+            R.layout.downloaded_model_view,
+            translateViewModel.availableModels
+        ) {
+
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                var listItemView = convertView
+                if (listItemView == null) {
+                    listItemView = LayoutInflater.from(context)
+                        .inflate(R.layout.downloaded_model_view, parent, false)
+                }
+
+                val modelCode = getItem(position) ?: "Undefined"
+                val modelTextView = listItemView!!.findViewById<TextView>(R.id.modelName)
+                val modelDelete = listItemView.findViewById<ImageView>(R.id.deleteModel)
+
+                val modelName =
+                    translateViewModel.availLanguagesCodeToValueMap[modelCode] ?: "Undefined"
+                modelTextView.text = modelName
+                modelDelete.setOnClickListener {
+                    downloadedModelDialog.dismiss()
+                    simpleDialog(modelName, modelCode)
+                }
+                return listItemView
+            }
+        }
+        listView.adapter = adapter
+    }
+
+    private fun simpleDialog(modelName: String, modelCode: String) {
+        val builder: AlertDialog.Builder = AlertDialog.Builder(this)
+        builder
+            .setMessage("Are you sure you want to delete $modelName model?")
+            .setPositiveButton("Yes") { _, _ ->
+                translateViewModel.deleteLanguageModel(modelCode)
+            }
+            .setNegativeButton("No", null)
+        val dialog: AlertDialog = builder.create()
+        dialog.show()
     }
 
 
@@ -389,7 +473,7 @@ class MainActivity : AppCompatActivity() {
                     Toast.LENGTH_LONG
                 ).show()
                 makeTranslationDisabled = true
-                binding.translate.isEnabled = false
+//                binding.translate.isEnabled = false
             }
         }
     }
@@ -425,6 +509,12 @@ class MainActivity : AppCompatActivity() {
                         translateViewModel.availLanguagesValueToCodeMap[selectedItem]
                             ?: AvailLanguages.ENGLISH.code
                     )
+                    // comment this to stop translation when changing spinner
+                    if (binding.ToLang.selectedItem != AvailLanguages.DETECT_LANG.value
+                        && !binding.sourceText.text.isNullOrBlank()
+                    ) {
+                        translateText()
+                    }
                 }
             }
 
@@ -489,6 +579,11 @@ class MainActivity : AppCompatActivity() {
         langCodes: List<String>,
         callback: (Boolean) -> (Unit)
     ) {
+//        if (isAlertDialogShowing) {
+//            Log.i(tempTag(), "AlertDialog is already showing")
+//            return
+//        }
+//        isAlertDialogShowing = true
         val msg: String = if (langCodes.size == 2) {
             val firstLang = translateViewModel.availLanguagesCodeToValueMap[langCodes[0]]
             val secondLang = translateViewModel.availLanguagesCodeToValueMap[langCodes[1]]
@@ -503,6 +598,7 @@ class MainActivity : AppCompatActivity() {
             .setMessage(msg)
             .setPositiveButton("Yes", null)
             .setNegativeButton("Cancel", null)
+            .setCancelable(false)
             .show()
 
         builder.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
@@ -512,6 +608,7 @@ class MainActivity : AppCompatActivity() {
 
         builder.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
             callback(false)
+            dontShowAlertBoxFlag = true
             builder.dismiss()
         }
 
@@ -532,12 +629,6 @@ class MainActivity : AppCompatActivity() {
             } else {
                 modelDownloadDialog.dismiss()
             }
-        }
-    }
-
-    private fun translateButtonClickListener() {
-        binding.translate.setOnClickListener {
-            translateText()
         }
     }
 
@@ -578,6 +669,9 @@ class MainActivity : AppCompatActivity() {
                 )
                 return@checkIfModelIsPresent
             }
+            if (dontShowAlertBoxFlag) {
+                return@checkIfModelIsPresent
+            }
             showAlertBox(it) { userResponse ->
                 if (userResponse) {
                     lifecycleScope.launch {
@@ -606,13 +700,12 @@ class MainActivity : AppCompatActivity() {
                     return
                 }
 
-                binding.translate.isEnabled = !p0.isNullOrBlank()
-
                 if (p0.isNullOrEmpty()) {
                     // comment this so spinner will not reset on clear text
 //                    translateViewModel.langDetectionState = true
 //                    setLanguageInFromLanguageSpinner(AvailLanguages.DETECT_LANG.value)
                     binding.resultText.text.clear()
+                    return
                 }
                 Log.i(tempTag(), "Coming here")
                 sourceTextIconsVisibilityListener(p0?.toString())
@@ -621,17 +714,28 @@ class MainActivity : AppCompatActivity() {
                     Log.i(tempTag(), "Here inside")
                     translateViewModel.identifyLanguage(p0.toString())
                 }
+            }
+
+            override fun afterTextChanged(p0: Editable?) {
+                if (p0.isNullOrEmpty()) {
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        dontShowAlertBoxFlag = false
+                    }, 1000)
+                }
 
                 // comment this to stop automatic translation
-                if (!p0.isNullOrEmpty()
-                    && binding.FromLang.selectedItem != AvailLanguages.DETECT_LANG.value
+                Handler(Looper.getMainLooper()).postDelayed({
+                    val spinnersAreSet =
+                        binding.FromLang.selectedItem != AvailLanguages.DETECT_LANG.value
+                                && binding.ToLang.selectedItem != AvailLanguages.DETECT_LANG.value
+                }, 1000)
+
+                if (!p0.isNullOrEmpty() &&
+                    binding.FromLang.selectedItem != AvailLanguages.DETECT_LANG.value
                     && binding.ToLang.selectedItem != AvailLanguages.DETECT_LANG.value
                 ) {
                     translateText()
                 }
-            }
-
-            override fun afterTextChanged(p0: Editable?) {
             }
         })
     }
@@ -724,6 +828,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setLanguageForSourceTextToSpeech(language: String) {
+        if (language == AvailLanguages.DETECT_LANG.value) return
         Log.i(tempTag(), "source language to speak $language")
         val locale =
             translateViewModel.availLanguagesValueToCodeMap[language]?.let {
@@ -751,7 +856,8 @@ class MainActivity : AppCompatActivity() {
             binding.resultTextCopy.visibility = View.GONE
             binding.resultTextClear.visibility = View.GONE
         } else {
-            binding.resultTextTalk.visibility = View.VISIBLE
+            binding.resultTextTalk.visibility =
+                View.VISIBLE  // ToDo logic to disappear when lang not supported
             binding.resultTextCopy.visibility = View.VISIBLE
             binding.resultTextClear.visibility = View.VISIBLE
         }
@@ -862,7 +968,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun mRecognitionListener(): RecognitionListener {
+    private fun mRecognitionListener(): RecognitionListener {
         return object : RecognitionListener {
             override fun onBeginningOfSpeech() {
             }
@@ -932,5 +1038,17 @@ class MainActivity : AppCompatActivity() {
             RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
         )
         recognizerIntent!!.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, RESULTS_LIMIT)
+    }
+
+    private fun textContainerInit() {
+        binding.sourceText.imeOptions = EditorInfo.IME_ACTION_DONE
+        binding.sourceText.setRawInputType(InputType.TYPE_CLASS_TEXT)
+        binding.resultText.imeOptions = EditorInfo.IME_ACTION_DONE
+        binding.resultText.setRawInputType(InputType.TYPE_CLASS_TEXT)
+    }
+
+    private fun hideKeyboard(view: View) {
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.hideSoftInputFromWindow(view.windowToken, 0)
     }
 }

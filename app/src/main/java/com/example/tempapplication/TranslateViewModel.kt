@@ -295,7 +295,7 @@ class TranslateViewModel : ViewModel() {
             callback(checkIfNecessaryModelsPresent(sourceLangCode, targetLanguageCode))
         }
 
-    private fun deleteLanguageModel(languageCode: String) {
+    fun deleteLanguageModel(languageCode: String) {
         viewModelScope.launch {
             try {
                 deleteModel(languageCode)
