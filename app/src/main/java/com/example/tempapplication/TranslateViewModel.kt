@@ -1,12 +1,15 @@
 package com.example.tempapplication
 
+import android.content.Context
+import android.net.Uri
 import android.util.Log
 import android.util.LruCache
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.tempapplication.utils.AvailLanguages
+import com.example.tempapplication.utils.SupportedLanguages
+import com.example.tempapplication.utils.OcrLanguages
 import com.example.tempapplication.utils.tempTag
 import com.google.android.gms.tasks.Task
 import com.google.mlkit.common.model.DownloadConditions
@@ -16,6 +19,14 @@ import com.google.mlkit.nl.translate.TranslateRemoteModel
 import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.Translator
 import com.google.mlkit.nl.translate.TranslatorOptions
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.TextRecognizerOptionsInterface
+import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
+import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions
+import com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions
+import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.*
 import kotlinx.coroutines.tasks.await
 
@@ -62,13 +73,16 @@ class TranslateViewModel : ViewModel() {
     private val _identifiedLang = MutableLiveData("und")
     val identifiedLang: LiveData<String> = _identifiedLang
 
+    private val _ocrResult = MutableLiveData<String>()
+    val ocrResult: LiveData<String> = _ocrResult
+
     var langDetectionState = true
 
     // just for helping, it was irritating to find every time in enum values
-    val availLanguagesCodeToValueMap: Map<String, String> =
-        AvailLanguages.values().associate { it.code to it.value }
+    val supportedLanguagesCodeToValueMap: Map<String, String> =
+        SupportedLanguages.values().associate { it.code to it.value }
     val availLanguagesValueToCodeMap =
-        availLanguagesCodeToValueMap.entries.associate { (k, v) -> v to k }
+        supportedLanguagesCodeToValueMap.entries.associate { (k, v) -> v to k }
 
     // a key value pair to manage language models
     private val translators =
@@ -209,7 +223,7 @@ class TranslateViewModel : ViewModel() {
                 return@withContext languageCode
             } catch (e: Exception) {
                 Log.i(tempTag(), "Language identification failed. Reason -> $e")
-                return@withContext AvailLanguages.DETECT_LANG.code // unIdentified language
+                return@withContext SupportedLanguages.DETECT_LANG.code // unIdentified language
             }
         }
     }
@@ -303,6 +317,32 @@ class TranslateViewModel : ViewModel() {
                 Log.i(tempTag(), "Error occurred while deleting -> $e")
             }
         }
+    }
+
+    fun runTextRecognition(applicationContext: Context, language: String, uri: Uri?) = viewModelScope.launch {
+        if (uri == null) {
+            Log.i(tempTag(), "Uri is null show error")
+            return@launch
+        }
+        val inputImage = InputImage.fromFilePath(applicationContext, uri)
+        Log.d(tempTag(), "starting text recog")
+        val recognizer = TextRecognition.getClient(getTextRecognitionOptions(language))
+        val textValue = recognizer.process(inputImage).await()
+        _ocrResult.postValue(textValue.text)
+        Log.d(tempTag(), "result text recog ${textValue.text}")
+    }
+
+    private fun getTextRecognitionOptions(language: String): TextRecognizerOptionsInterface {
+        val script = OcrLanguages.findScript(language)
+        Log.d(tempTag(), "text language $language script : $script")
+        val recognizer = when (script) {
+            OcrLanguages.LATIN -> TextRecognizerOptions.DEFAULT_OPTIONS
+            OcrLanguages.DEVANAGARI -> DevanagariTextRecognizerOptions.Builder().build()
+            OcrLanguages.CHINESE -> ChineseTextRecognizerOptions.Builder().build()
+            OcrLanguages.JAPANESE -> JapaneseTextRecognizerOptions.Builder().build()
+            OcrLanguages.KOREAN -> KoreanTextRecognizerOptions.Builder().build()
+        }
+        return recognizer
     }
 
 

@@ -1,6 +1,6 @@
 package com.example.tempapplication.utils
 
-enum class AvailLanguages(val code: String, val value: String){
+enum class SupportedLanguages(val code: String, val value: String){
     DETECT_LANG("und","Detect Language"),
     AFRIKAANS("af", "Afrikaans"),
     ARABIC("ar", "Arabic"),
