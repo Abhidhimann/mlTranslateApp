@@ -14,6 +14,7 @@ import com.canhub.cropper.databinding.CropImageViewBinding
 import com.example.tempapplication.BuildConfig
 import com.example.tempapplication.R
 import com.example.tempapplication.databinding.ActivityCropBinding
+import com.example.tempapplication.utils.CACHE_IMAGE_FOLDER
 import java.io.File
 import java.io.FileOutputStream
 
@@ -65,7 +66,7 @@ class CropActivity : AppCompatActivity() {
     }
 
     private fun returnImageResult(bitmap: Bitmap?) {
-        val cachePath = File(cacheDir, "images")
+        val cachePath = File(cacheDir, CACHE_IMAGE_FOLDER)
         cachePath.mkdirs() // Make sure the directory exists
         val imageFile = File(cachePath, "${System.currentTimeMillis()}.png")
         try {

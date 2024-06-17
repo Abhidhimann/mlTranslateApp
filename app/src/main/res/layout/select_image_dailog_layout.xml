@@ -45,11 +45,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="24dp"
-            android:text="Gallery"
+            android:text="@string/gallery"
             android:textSize="20sp" />
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/sourceCamera"
         android:layout_marginTop="8dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
@@ -64,7 +65,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="24dp"
-            android:text="Camera"
+            android:text="@string/camera"
             android:textSize="20sp" />
     </LinearLayout>
 </LinearLayout>

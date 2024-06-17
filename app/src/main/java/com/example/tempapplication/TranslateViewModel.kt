@@ -8,9 +8,10 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.tempapplication.utils.CommonUtils
 import com.example.tempapplication.utils.SupportedLanguages
 import com.example.tempapplication.utils.OcrLanguages
-import com.example.tempapplication.utils.tempTag
+import com.example.tempapplication.utils.classTag
 import com.google.android.gms.tasks.Task
 import com.google.mlkit.common.model.DownloadConditions
 import com.google.mlkit.common.model.RemoteModelManager
@@ -41,9 +42,6 @@ class TranslateViewModel : ViewModel() {
     companion object {
         // This specifies the number of translators instance we want to keep in our LRU cache.
         private const val MAX_NUM_INSTANCE = 3
-
-        // This specifies the number of model after we will show some warning to user
-        private const val MAX_NUM_MODELS_TO_SHOW_WARNING = 5
     }
 
 
@@ -115,9 +113,9 @@ class TranslateViewModel : ViewModel() {
                 val languages = remoteModels.map { it.language }
                 _availableModels.clear()
                 _availableModels.addAll(languages)
-                Log.i(tempTag(), "available models are2 $_availableModels")
+                Log.i(classTag(), "available models are2 $_availableModels")
             } catch (e: Exception) {
-                Log.i(tempTag(), "Error while retrieving models. Reason -> $e")
+                Log.i(classTag(), "Error while retrieving models. Reason -> $e")
             }
         }
     }
@@ -138,8 +136,8 @@ class TranslateViewModel : ViewModel() {
             modelManager.deleteDownloadedModel(model).await()
             updateAvailableModels()
         } catch (e: Exception) {
-            Log.i(tempTag(), "Error while deleting $languageCode model")
-            throw TranslationFailedException(e.toString())
+            Log.i(classTag(), "Error while deleting $languageCode model")
+            throw CommonUtils.TranslationFailedException(e.toString())
         }
 
     }
@@ -147,7 +145,7 @@ class TranslateViewModel : ViewModel() {
     private suspend fun downloadModel(languageCode: String) {
         withContext(Dispatchers.IO) {
             if (_availableModels.contains(languageCode)) {
-                Log.i(tempTag(), "model $languageCode is already present")
+                Log.i(classTag(), "model $languageCode is already present")
                 return@withContext
             }
 
@@ -157,7 +155,7 @@ class TranslateViewModel : ViewModel() {
             if (pendingDownloads.containsKey(languageCode)) {
                 downloadTask = pendingDownloads[languageCode]
                 // found existing downloading task
-                Log.i(tempTag(), "Model $languageCode downloading is in process please wait")
+                Log.i(classTag(), "Model $languageCode downloading is in process please wait")
                 if (downloadTask != null && !downloadTask.isCanceled) {
                     return@withContext
                 }
@@ -167,16 +165,16 @@ class TranslateViewModel : ViewModel() {
             val downloadConditions = DownloadConditions.Builder().build() // can give wifi also
 
             try {
-                Log.i(tempTag(), "Model $languageCode is not present so starting downloading")
+                Log.i(classTag(), "Model $languageCode is not present so starting downloading")
                 downloadTask = modelManager.download(model, downloadConditions)
                 pendingDownloads[languageCode] = downloadTask
                 downloadTask.await()
-                Log.i(tempTag(), "Model $languageCode downloaded successfully from internet")
+                Log.i(classTag(), "Model $languageCode downloaded successfully from internet")
                 updateAvailableModels()
                 return@withContext
             } catch (e: Exception) {
-                Log.i(tempTag(), "error while downloading model $languageCode. Reason -> $e")
-                throw TranslationFailedException(e.toString())
+                Log.i(classTag(), "error while downloading model $languageCode. Reason -> $e")
+                throw CommonUtils.TranslationFailedException(e.toString())
             }
         }
     }
@@ -186,10 +184,10 @@ class TranslateViewModel : ViewModel() {
         withContext(Dispatchers.IO) {
             try {
                 translators[options].downloadModelIfNeeded().await()
-                Log.i(tempTag(), "Model is active to start the translation")
+                Log.i(classTag(), "Model is active to start the translation")
             } catch (e: Exception) {
-                Log.i(tempTag(), "Some error occurred -> $e")
-                throw TranslationFailedException(e.toString())
+                Log.i(classTag(), "Some error occurred -> $e")
+                throw CommonUtils.TranslationFailedException(e.toString())
             }
         }
 
@@ -198,13 +196,13 @@ class TranslateViewModel : ViewModel() {
             try {
                 val translatedText = translators[options].translate(sourceText).await()
                 Log.i(
-                    tempTag(),
+                    classTag(),
                     "Translation done successfully: $sourceText -> $translatedText"
                 )
                 return@withContext translatedText
             } catch (e: Exception) {
-                Log.i(tempTag(), "Some error occurred while translating. Reason -> $e")
-                throw TranslationFailedException(e.toString())
+                Log.i(classTag(), "Some error occurred while translating. Reason -> $e")
+                throw CommonUtils.TranslationFailedException(e.toString())
             }
         }
 
@@ -215,14 +213,14 @@ class TranslateViewModel : ViewModel() {
 
     private suspend fun identifyLanguageCode(text: String): String {
         return withContext(Dispatchers.IO) {
-            Log.i(tempTag(), "Passed text to get language code is $text")
+            Log.i(classTag(), "Passed text to get language code is $text")
             try {
                 val languageIdentifier = LanguageIdentification.getClient()
                 val languageCode = languageIdentifier.identifyLanguage(text).await().toString()
-                Log.i(tempTag(), "identified language is: $languageCode")
+                Log.i(classTag(), "identified language is: $languageCode")
                 return@withContext languageCode
             } catch (e: Exception) {
-                Log.i(tempTag(), "Language identification failed. Reason -> $e")
+                Log.i(classTag(), "Language identification failed. Reason -> $e")
                 return@withContext SupportedLanguages.DETECT_LANG.code // unIdentified language
             }
         }
@@ -237,7 +235,7 @@ class TranslateViewModel : ViewModel() {
                         downloadModel(targetLanguageCode)
                     } catch (e: Exception) {
                         Log.i(
-                            tempTag(),
+                            classTag(),
                             "Error occurred while downloading target language model: $e"
                         )
                         pendingDownloads.clear()
@@ -249,7 +247,7 @@ class TranslateViewModel : ViewModel() {
                         downloadModel(sourceLangCode)
                     } catch (e: Exception) {
                         Log.i(
-                            tempTag(),
+                            classTag(),
                             "Error occurred while downloading source language model: $e"
                         )
                         pendingDownloads.clear()
@@ -278,7 +276,7 @@ class TranslateViewModel : ViewModel() {
                     _translatedText.postValue(translatedText)
                 }
             } catch (e: Exception) {
-                Log.i(tempTag(), "Error occurred -> $e")
+                Log.i(classTag(), "Error occurred -> $e")
                 _translateErrorState.postValue(true)
             }
         }
@@ -314,27 +312,27 @@ class TranslateViewModel : ViewModel() {
             try {
                 deleteModel(languageCode)
             } catch (e: Exception) {
-                Log.i(tempTag(), "Error occurred while deleting -> $e")
+                Log.i(classTag(), "Error occurred while deleting -> $e")
             }
         }
     }
 
     fun runTextRecognition(applicationContext: Context, language: String, uri: Uri?) = viewModelScope.launch {
         if (uri == null) {
-            Log.i(tempTag(), "Uri is null show error")
+            Log.i(classTag(), "Uri is null show error")
             return@launch
         }
         val inputImage = InputImage.fromFilePath(applicationContext, uri)
-        Log.d(tempTag(), "starting text recog")
+        Log.d(classTag(), "starting text recog")
         val recognizer = TextRecognition.getClient(getTextRecognitionOptions(language))
         val textValue = recognizer.process(inputImage).await()
         _ocrResult.postValue(textValue.text)
-        Log.d(tempTag(), "result text recog ${textValue.text}")
+        Log.d(classTag(), "result text recog ${textValue.text}")
     }
 
     private fun getTextRecognitionOptions(language: String): TextRecognizerOptionsInterface {
         val script = OcrLanguages.findScript(language)
-        Log.d(tempTag(), "text language $language script : $script")
+        Log.d(classTag(), "text language $language script : $script")
         val recognizer = when (script) {
             OcrLanguages.LATIN -> TextRecognizerOptions.DEFAULT_OPTIONS
             OcrLanguages.DEVANAGARI -> DevanagariTextRecognizerOptions.Builder().build()
@@ -351,5 +349,3 @@ class TranslateViewModel : ViewModel() {
         translators.evictAll()
     }
 }
-
-class TranslationFailedException(message: String) : Exception(message)

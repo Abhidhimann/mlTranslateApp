@@ -2,6 +2,7 @@ package com.example.tempapplication.view
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.app.Dialog
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -10,9 +11,9 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.speech.RecognitionListener
@@ -24,6 +25,7 @@ import android.text.InputType
 import android.text.TextWatcher
 import android.util.Log
 import android.view.*
+import android.view.View.OnFocusChangeListener
 import android.view.inputmethod.EditorInfo
 import android.widget.*
 import androidx.activity.result.ActivityResultLauncher
@@ -33,27 +35,26 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
+import com.example.tempapplication.BuildConfig
 import com.example.tempapplication.R
 import com.example.tempapplication.TranslateViewModel
 import com.example.tempapplication.databinding.ActivityMainBinding
 import com.example.tempapplication.utils.*
+import com.example.tempapplication.utils.CommonUtils.getTempFile
+import com.example.tempapplication.utils.CommonUtils.shortToast
+import com.example.tempapplication.utils.DialogUtils.dialogSearchAbleSpinnerInit
 import com.google.android.material.bottomsheet.BottomSheetDialog
-import kotlinx.coroutines.launch
+import java.io.File
 import java.util.*
 
 
 // TODO
-/* later work change change hardcoded strings
- changing translation button ui
- adding seeing models and deleting them
- optional: text detection by image & voice, maybe dark theme
- refactor spinner adaptor
- rechecking mic and speaker in different os version
- keyboard enter key -> translate*/
+// layout change when keyboard
+// maybe a dialog when user Permanently denies permission
 
-class MainActivity : AppCompatActivity() {
+class TranslateActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var fromLangSpinnerAdapter: ArrayAdapter<String>
     private lateinit var toLangSpinnerAdapter: ArrayAdapter<String>
@@ -64,15 +65,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var toLangCustomDialog: Dialog
     private lateinit var downloadedModelDialog: Dialog
     private lateinit var popupMenu: PopupMenu
-    private var dontShowAlertBoxFlag = false
+    private lateinit var modelDownloadDialog: Dialog
+    private var doNotShowAlertBoxFlag = false
 
     private var speechRecognizer: SpeechRecognizer? = null
     private var recognizerIntent: Intent? = null
 
     private lateinit var translateViewModel: TranslateViewModel
     private var makeTranslationDisabled = false
+    private var makeSourceTextTalkDisabled = false
+    private var makeResultTextTalkDisabled = false
 
-    @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -85,13 +88,18 @@ class MainActivity : AppCompatActivity() {
         textChangeListeners()
         textOperationsIconsListeners()
         selectImageListener()
+        threeDotMenuClickListener()
         translationObservers()
-
-        translateViewModel.ocrResult.observe(this) {
-            binding.sourceText.setText(it)
+        binding.sourceText.setOnClickListener {
+            Log.d(tempTag(), "click happened")
         }
-        binding.toolbar.threeDotMenu.setOnClickListener {
-            popupMenu.show()
+        binding.sourceText.onFocusChangeListener = OnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                // User clicked on EditText and it gained focus
+                Log.d(tempTag(), "has focus")
+            } else {
+                Log.d(tempTag(), "lost focus")
+            }
         }
     }
 
@@ -102,6 +110,7 @@ class MainActivity : AppCompatActivity() {
         fromLangDialogSearchAbleSpinnerInit()
         toLangDialogSearchAbleSpinnerInit()
         downloadedModelDialogInit()
+        modelDownloadProgressDialogInit()
         initSpeechRecognizer()
         textContainerInit()
         popUpMenuInit()
@@ -128,6 +137,7 @@ class MainActivity : AppCompatActivity() {
         translationModelDownloadErrorObserver()
         translatedTextObserver()
         translateModelDownloadObserver()
+        ocrResultObserver()
     }
 
     private fun textOperationsIconsListeners() {
@@ -142,7 +152,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun popUpMenuInit() {
-        popupMenu = PopupMenu(this@MainActivity, binding.toolbar.threeDotMenu)
+        popupMenu = PopupMenu(this@TranslateActivity, binding.toolbar.threeDotMenu)
         popupMenu.menuInflater.inflate(R.menu.menu_items, popupMenu.menu)
         popupMenu.setOnMenuItemClickListener { item ->
             when (item.itemId) {
@@ -150,15 +160,22 @@ class MainActivity : AppCompatActivity() {
                     downloadedModelDialog.show()
                     true
                 }
+
                 else -> false
             }
+        }
+    }
+
+    private fun threeDotMenuClickListener(){
+        binding.toolbar.threeDotMenu.setOnClickListener {
+            popupMenu.show()
         }
     }
 
     private fun selectImageListener() {
         binding.selectImage.setOnClickListener {
             if (binding.FromLang.selectedItem == SupportedLanguages.DETECT_LANG.value) {
-                Toast.makeText(this, "Please select language", Toast.LENGTH_SHORT).show()
+                shortToast(this, getString(R.string.select_language))
                 return@setOnClickListener
             }
             selectImageCustomDialog.show()
@@ -171,23 +188,36 @@ class MainActivity : AppCompatActivity() {
         selectImageCustomDialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
         val galleryView: LinearLayout? = selectImageCustomDialog.findViewById(R.id.sourceGallery)
+        val cameraView: LinearLayout? = selectImageCustomDialog.findViewById(R.id.sourceCamera)
+        val cancelView: ImageView? = selectImageCustomDialog.findViewById(R.id.close_dialog)
         galleryView?.setOnClickListener {
-            if (!hasStoragePermission(applicationContext)) {
-                requestForStoragePermissionsBelowAndroid11()
-            } else {
+            if (requestStoragePermissionIfNot(applicationContext)) {
                 getImageFromGallery.launch("image/*")
                 selectImageCustomDialog.dismiss()
             }
+        }
+
+        cameraView?.setOnClickListener {
+            if (requestCameraPermissionIfNot(applicationContext)) {
+                launchCamera()
+                selectImageCustomDialog.dismiss()
+            }
+        }
+
+        cancelView?.setOnClickListener {
+            selectImageCustomDialog.dismiss()
         }
     }
 
     private fun sourceTextMicListener() {
         binding.sourceTextMic.setOnClickListener {
             if (binding.FromLang.selectedItem == SupportedLanguages.DETECT_LANG.value) {
-                Toast.makeText(this, "Please select language", Toast.LENGTH_SHORT).show()
+                shortToast(this, getString(R.string.select_language))
                 return@setOnClickListener
             }
-            checkVoiceRecordPermissions()
+            if (requestVoiceRecordPermissionIfNot(applicationContext)) {
+                startListening()
+            }
         }
     }
 
@@ -207,6 +237,7 @@ class MainActivity : AppCompatActivity() {
                     fromLangCustomDialog.show()
                     true
                 }
+
                 else -> {
                     true
                 }
@@ -222,6 +253,7 @@ class MainActivity : AppCompatActivity() {
                     toLangCustomDialog.show()
                     true
                 }
+
                 else -> {
                     true
                 }
@@ -231,67 +263,15 @@ class MainActivity : AppCompatActivity() {
 
     // can do by textView also will be very easy and clear, because previous I used spinner so...
     private fun fromLangDialogSearchAbleSpinnerInit() {
-        fromLangCustomDialog = Dialog(this)
-        fromLangCustomDialog.setContentView(R.layout.searchable_spinner)
-        val displayMetrics = resources.displayMetrics
-        val screenWidth = displayMetrics.widthPixels
-        val screenHeight = displayMetrics.heightPixels
-        fromLangCustomDialog.window?.setLayout(
-            (screenWidth * 0.6).toInt(),
-            (screenHeight * 0.7).toInt()
-        )
-        fromLangCustomDialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-
-        val editText: EditText = fromLangCustomDialog.findViewById(R.id.edit_text)
-        val listView: ListView = fromLangCustomDialog.findViewById(R.id.list_view)
-
-        val adapter: ArrayAdapter<String> = object : ArrayAdapter<String>(
-            this@MainActivity,
-            android.R.layout.simple_list_item_1,
-            translateViewModel.supportedLanguagesCodeToValueMap.values.toList()
+        fromLangCustomDialog = dialogSearchAbleSpinnerInit(
+            this@TranslateActivity,
+            resources.displayMetrics,
+            SupportedLanguages.values().toList(),
+            translateViewModel.availableModels
         ) {
-
-            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val view = super.getDropDownView(position, convertView, parent)
-                val textView = view as TextView
-                val langCode = translateViewModel.availLanguagesValueToCodeMap[getItem(position)]
-                if (translateViewModel.availableModels.contains(langCode)) {
-                    textView.alpha = 1f
-                } else {
-                    textView.alpha = 0.5f
-                }
-                return view
-            }
-        }
-
-        listView.adapter = adapter
-        editText.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(
-                s: CharSequence,
-                start: Int,
-                count: Int,
-                after: Int
-            ) {
-            }
-
-            override fun onTextChanged(
-                s: CharSequence,
-                start: Int,
-                before: Int,
-                count: Int
-            ) {
-                adapter.filter.filter(s)
-            }
-
-            override fun afterTextChanged(s: Editable) {}
-        })
-
-        listView.setOnItemClickListener { _, _, position, _ ->
             binding.FromLang.setSelection(
                 fromLangSpinnerAdapter.getPosition(
-                    adapter.getItem(
-                        position
-                    )
+                    it.value
                 )
             )
             fromLangCustomDialog.dismiss()
@@ -299,75 +279,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun toLangDialogSearchAbleSpinnerInit() {
-//        toLangCustomDialog = Dialog(this)
-//        toLangCustomDialog.setContentView(R.layout.searchable_spinner)
-//        val displayMetrics = resources.displayMetrics
-//        val screenWidth = displayMetrics.widthPixels
-//        val screenHeight = displayMetrics.heightPixels
-//        toLangCustomDialog.window?.setLayout(
-//            (screenWidth * 0.6).toInt(),
-//            (screenHeight * 0.7).toInt()
-//        )
-//        toLangCustomDialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-//
-//        val editText: EditText = toLangCustomDialog.findViewById(R.id.edit_text)
-//        val listView: ListView = toLangCustomDialog.findViewById(R.id.list_view)
-//
-//        val adapter: ArrayAdapter<String> = object : ArrayAdapter<String>(
-//            this@MainActivity,
-//            android.R.layout.simple_list_item_1,
-//            translateViewModel.supportedLanguagesCodeToValueMap.values.filter { it != SupportedLanguages.DETECT_LANG.value }
-//        ) {
-//
-//            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-//                val view = super.getDropDownView(position, convertView, parent)
-//                val textView = view as TextView
-//                val langCode = translateViewModel.availLanguagesValueToCodeMap[getItem(position)]
-//                if (translateViewModel.availableModels.contains(langCode)) {
-//                    textView.alpha = 1f
-//                } else {
-//                    textView.alpha = 0.5f
-//                }
-//                return view
-//            }
-//        }
-//
-//        listView.adapter = adapter
-//        editText.addTextChangedListener(object : TextWatcher {
-//            override fun beforeTextChanged(
-//                s: CharSequence,
-//                start: Int,
-//                count: Int,
-//                after: Int
-//            ) {
-//            }
-//
-//            override fun onTextChanged(
-//                s: CharSequence,
-//                start: Int,
-//                before: Int,
-//                count: Int
-//            ) {
-//                adapter.filter.filter(s)
-//            }
-//
-//            override fun afterTextChanged(s: Editable) {}
-//        })
-//
-//        listView.setOnItemClickListener { _, _, position, _ ->
-//            binding.ToLang.setSelection(
-//                toLangSpinnerAdapter.getPosition(
-//                    adapter.getItem(
-//                        position
-//                    )
-//                )
-//            )
-//            toLangCustomDialog.dismiss()
-//        }
-        toLangCustomDialog = DialogUtils.dialogSearchAbleSpinnerInit(
+        toLangCustomDialog = dialogSearchAbleSpinnerInit(
             this,
             resources.displayMetrics,
-            SupportedLanguages.values(),
+            SupportedLanguages.values().filter { it != SupportedLanguages.DETECT_LANG },
             translateViewModel.availableModels
         ) {
             binding.ToLang.setSelection(
@@ -393,7 +308,7 @@ class MainActivity : AppCompatActivity() {
         val listView: ListView = downloadedModelDialog.findViewById(R.id.model_list_view)
 
         val adapter: ArrayAdapter<String> = object : ArrayAdapter<String>(
-            this@MainActivity,
+            this@TranslateActivity,
             R.layout.downloaded_model_view,
             translateViewModel.availableModels
         ) {
@@ -425,7 +340,7 @@ class MainActivity : AppCompatActivity() {
     private fun simpleDialog(modelName: String, modelCode: String) {
         val builder: AlertDialog.Builder = AlertDialog.Builder(this)
         builder
-            .setMessage("Are you sure you want to delete $modelName model?")
+            .setMessage(getString(R.string.delete_model_confirmation, modelName))
             .setPositiveButton("Yes") { _, _ ->
                 translateViewModel.deleteLanguageModel(modelCode)
             }
@@ -485,15 +400,10 @@ class MainActivity : AppCompatActivity() {
                 return@observe
             }
             val language = translateViewModel.supportedLanguagesCodeToValueMap[langCode.lowercase()]
-            Log.i(tempTag(), "identified lang $language")
+            Log.i(classTag(), "identified lang $language")
             if (language != null) {
                 setLanguageInFromLanguageSpinner(language)
             } else {
-                Toast.makeText(
-                    this,
-                    "Sorry ${Locale(langCode).displayLanguage} is not supported yet",
-                    Toast.LENGTH_LONG
-                ).show()
                 makeTranslationDisabled = true
             }
         }
@@ -553,7 +463,7 @@ class MainActivity : AppCompatActivity() {
                 id: Long
             ) {
                 val selectedItem = parent?.getItemAtPosition(position).toString()
-                Log.i(tempTag(), "ToLang selected item: $selectedItem")
+                Log.i(classTag(), "ToLang selected item: $selectedItem")
                 if (selectedItem != SupportedLanguages.DETECT_LANG.value) {
                     setLanguageForResultTextToSpeech(selectedItem)
                     // comment this to stop translation when changing spinner
@@ -572,7 +482,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun translationErrorObserver() {
         translateViewModel.translateErrorState.observe(this) {
-            Log.i(tempTag(), "Some error occurred while translating")
+            Log.i(classTag(), "Some error occurred while translating")
             // not showing this to user for now
         }
     }
@@ -580,11 +490,7 @@ class MainActivity : AppCompatActivity() {
     private fun translationModelDownloadErrorObserver() {
         translateViewModel.downloadErrorState.observe(this) {
             if (it) {
-                Toast.makeText(
-                    this,
-                    "Some error occurred while downloading. Please try again later.",
-                    Toast.LENGTH_SHORT
-                ).show()
+                shortToast(this, getString(R.string.model_download_error))
                 translateViewModel.initializeTranslationState()
             }
         }
@@ -596,6 +502,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // can optimize it
     private fun showAlertBox(
         langCodes: List<String>,
         callback: (Boolean) -> (Unit)
@@ -603,19 +510,19 @@ class MainActivity : AppCompatActivity() {
         val msg: String = if (langCodes.size == 2) {
             val firstLang = translateViewModel.supportedLanguagesCodeToValueMap[langCodes[0]]
             val secondLang = translateViewModel.supportedLanguagesCodeToValueMap[langCodes[1]]
-            "Translation require downloading model for $firstLang & $secondLang" +
-                    "(< 30mb). This is only one time process."
+            getString(R.string.download_model_confirmation_2, firstLang, secondLang)
         } else {
             val lang = translateViewModel.supportedLanguagesCodeToValueMap[langCodes[0]]
-            "Translation require downloading model for $lang (< 15mb). This is only one time process."
+            getString(R.string.download_model_confirmation_1, lang)
         }
 
         val builder = AlertDialog.Builder(this)
             .setMessage(msg)
-            .setPositiveButton("Yes", null)
-            .setNegativeButton("Cancel", null)
+            .setPositiveButton(getString(R.string.yes), null)
+            .setNegativeButton(getString(R.string.cancel), null)
             .setCancelable(false)
             .show()
+        doNotShowAlertBoxFlag = true
 
         builder.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             callback(true)
@@ -624,21 +531,22 @@ class MainActivity : AppCompatActivity() {
 
         builder.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
             callback(false)
-            dontShowAlertBoxFlag = true
             builder.dismiss()
         }
 
     }
 
-    private fun translateModelDownloadObserver() {
+    private fun modelDownloadProgressDialogInit() {
         val view: View =
             layoutInflater.inflate(R.layout.translation_download_progress_dialog_layout, null)
 
-        val modelDownloadDialog = AlertDialog.Builder(this)
+        modelDownloadDialog = AlertDialog.Builder(this)
             .setView(view)
             .setCancelable(false)
             .create()
+    }
 
+    private fun translateModelDownloadObserver() {
         translateViewModel.newModelDownloadProgress.observe(this) {
             if (it) {
                 modelDownloadDialog.show()
@@ -648,15 +556,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun ocrResultObserver() {
+        translateViewModel.ocrResult.observe(this) {
+            binding.sourceText.setText(it)
+        }
+    }
+
     private fun translateText() {
         if (binding.FromLang.selectedItem == SupportedLanguages.DETECT_LANG.value
             || binding.ToLang.selectedItem == SupportedLanguages.DETECT_LANG.value
         ) {
-            Toast.makeText(
-                this,
-                "Please Select Language",
-                Toast.LENGTH_SHORT
-            ).show()
+            shortToast(this, getString(R.string.select_language))
             return
         }
         val sourceLangCode =
@@ -664,13 +574,9 @@ class MainActivity : AppCompatActivity() {
         val targetLangCode =
             translateViewModel.availLanguagesValueToCodeMap[binding.ToLang.selectedItem.toString()]
 
-        Log.i(tempTag(), "codes are $sourceLangCode $targetLangCode")
+        Log.i(classTag(), "codes are $sourceLangCode $targetLangCode")
         if (sourceLangCode == null || targetLangCode == null) {
-            Toast.makeText(
-                this,
-                "Some error occurred while translating. Please try again later.",
-                Toast.LENGTH_SHORT
-            ).show()
+            shortToast(this, getString(R.string.translation_error))
             translateViewModel.initializeTranslationState()
             return
         }
@@ -685,19 +591,21 @@ class MainActivity : AppCompatActivity() {
                 )
                 return@checkIfModelIsPresent
             }
-            if (dontShowAlertBoxFlag) {
+            if (doNotShowAlertBoxFlag) {
                 return@checkIfModelIsPresent
             }
             showAlertBox(it) { userResponse ->
                 if (userResponse) {
-                    lifecycleScope.launch {
-                        translateViewModel.downloadNewModels(sourceLangCode, targetLangCode)
-                        translateViewModel.myTranslate(
-                            binding.sourceText.text.toString(),
-                            sourceLangCode,
-                            targetLangCode,
-                        )
+                    if (!NetworkUtils.isNetworkAvailable(applicationContext)) {
+                        shortToast(this, getString(R.string.internet_error))
+                        return@showAlertBox
                     }
+                    translateViewModel.downloadNewModels(sourceLangCode, targetLangCode)
+                    translateViewModel.myTranslate(
+                        binding.sourceText.text.toString(),
+                        sourceLangCode,
+                        targetLangCode,
+                    )
                 }
             }
         }
@@ -723,29 +631,32 @@ class MainActivity : AppCompatActivity() {
                     binding.resultText.text.clear()
                     return
                 }
-                Log.i(tempTag(), "Coming here")
-                sourceTextIconsVisibilityListener(p0?.toString())
+                Log.i(classTag(), "Coming here")
 
                 if (!p0.isNullOrBlank() && p0.length > 4 && translateViewModel.langDetectionState) {
-                    Log.i(tempTag(), "Here inside")
+                    Log.i(classTag(), "Here inside")
                     translateViewModel.identifyLanguage(p0.toString())
                 }
+
+                Handler(Looper.getMainLooper()).postDelayed({
+                    sourceTextIconsVisibilityListener(p0.toString())
+                }, 500)
             }
 
             override fun afterTextChanged(p0: Editable?) {
                 if (p0.isNullOrEmpty()) {
                     Handler(Looper.getMainLooper()).postDelayed({
-                        dontShowAlertBoxFlag = false
+                        doNotShowAlertBoxFlag = false
                     }, 1000)
                 }
 
-                // comment this to stop automatic translation
-                Handler(Looper.getMainLooper()).postDelayed({
-                    val spinnersAreSet =
-                        binding.FromLang.selectedItem != SupportedLanguages.DETECT_LANG.value
-                                && binding.ToLang.selectedItem != SupportedLanguages.DETECT_LANG.value
-                }, 1000)
+//                Handler(Looper.getMainLooper()).postDelayed({
+//                    val spinnersAreSet =
+//                        binding.FromLang.selectedItem != SupportedLanguages.DETECT_LANG.value
+//                                && binding.ToLang.selectedItem != SupportedLanguages.DETECT_LANG.value
+//                }, 1000)
 
+                // comment this to stop automatic translation
                 if (!p0.isNullOrEmpty() &&
                     binding.FromLang.selectedItem != SupportedLanguages.DETECT_LANG.value
                     && binding.ToLang.selectedItem != SupportedLanguages.DETECT_LANG.value
@@ -776,13 +687,14 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    private fun sourceTextIconsVisibilityListener(text: String?) {
-        if (text.isNullOrEmpty()) {
+    private fun sourceTextIconsVisibilityListener(text: String) {
+        if (text.isEmpty()) {
             binding.sourceTextTalk.visibility = View.GONE
             binding.sourceTextCopy.visibility = View.GONE
             binding.sourceTextClear.visibility = View.GONE
         } else {
-            binding.sourceTextTalk.visibility = View.VISIBLE
+            binding.sourceTextTalk.visibility =
+                if (makeSourceTextTalkDisabled) View.GONE else View.VISIBLE
             binding.sourceTextCopy.visibility = View.VISIBLE
             binding.sourceTextClear.visibility = View.VISIBLE
         }
@@ -791,11 +703,7 @@ class MainActivity : AppCompatActivity() {
     private fun sourceTextTalkIconListener() {
         binding.sourceTextTalk.setOnClickListener {
             if (binding.FromLang.selectedItem == SupportedLanguages.DETECT_LANG.value) {
-                Toast.makeText(
-                    this,
-                    "Please Selected Language.",
-                    Toast.LENGTH_SHORT
-                ).show()
+                shortToast(this, getString(R.string.select_language))
                 return@setOnClickListener
             }
             if (textToSpeechSourceText.isSpeaking) {
@@ -820,6 +728,7 @@ class MainActivity : AppCompatActivity() {
         binding.sourceTextClear.setOnClickListener {
             binding.sourceText.text.clear()
             binding.resultText.text.clear()
+            sourceTextIconsVisibilityListener(binding.sourceText.text.toString())
         }
     }
 
@@ -833,35 +742,38 @@ class MainActivity : AppCompatActivity() {
     private fun textToSpeechInit() {
         textToSpeechSourceText = TextToSpeech(this) { status ->
             if (status != TextToSpeech.SUCCESS) {
-                Log.e(tempTag(), "text to speech initialization error")
+                Log.e(classTag(), "text to speech initialization error")
             }
         }
         textToSpeechResultText = TextToSpeech(this) { status ->
             if (status != TextToSpeech.SUCCESS) {
-                Log.e(tempTag(), "text to speech initialization error")
+                Log.e(classTag(), "text to speech initialization error")
             }
         }
     }
 
     private fun setLanguageForSourceTextToSpeech(language: String) {
         if (language == SupportedLanguages.DETECT_LANG.value) return
-        Log.i(tempTag(), "source language to speak $language")
+        Log.i(classTag(), "source language to speak $language")
         val locale =
             translateViewModel.availLanguagesValueToCodeMap[language]?.let {
                 Locale(it)
             }
         if (locale == null) {
-            Log.e(tempTag(), "Unable to find locale")
+            Log.e(classTag(), "Unable to find locale")
+            makeSourceTextTalkDisabled = true
             binding.sourceTextTalk.visibility = View.GONE
             return
         }
         val result = textToSpeechSourceText.setLanguage(locale)
         if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-            Log.e(tempTag(), "The $language Language is not supported!")
+            Log.e(classTag(), "The $language Language is not supported!")
+            makeSourceTextTalkDisabled = true
             binding.sourceTextTalk.visibility = View.GONE
         } else {
-            if (!binding.resultText.text.isNullOrBlank()) {
-                binding.resultTextTalk.visibility = View.VISIBLE
+            makeSourceTextTalkDisabled = false
+            if (!binding.sourceText.text.isNullOrBlank()) {
+                binding.sourceTextTalk.visibility = View.VISIBLE
             }
         }
     }
@@ -873,7 +785,7 @@ class MainActivity : AppCompatActivity() {
             binding.resultTextClear.visibility = View.GONE
         } else {
             binding.resultTextTalk.visibility =
-                View.VISIBLE  // ToDo logic to disappear when lang not supported
+                if (makeResultTextTalkDisabled) View.GONE else View.VISIBLE
             binding.resultTextCopy.visibility = View.VISIBLE
             binding.resultTextClear.visibility = View.VISIBLE
         }
@@ -882,11 +794,7 @@ class MainActivity : AppCompatActivity() {
     private fun resultTextTalkIconListener() {
         binding.resultTextTalk.setOnClickListener {
             if (binding.ToLang.selectedItem == SupportedLanguages.DETECT_LANG.value) {
-                Toast.makeText(
-                    this,
-                    "Please Selected Language",
-                    Toast.LENGTH_SHORT
-                ).show()
+                shortToast(this, getString(R.string.select_language))
                 return@setOnClickListener
             }
             if (textToSpeechResultText.isSpeaking) {
@@ -914,21 +822,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setLanguageForResultTextToSpeech(language: String) {
-        Log.i(tempTag(), "result language to speak $language")
+        Log.i(classTag(), "result language to speak $language")
         val locale =
             translateViewModel.availLanguagesValueToCodeMap[language]?.let {
                 Locale(it)
             }
         if (locale == null) {
-            Log.e(tempTag(), "Unable to find locale")
+            Log.e(classTag(), "Unable to find locale")
+            makeResultTextTalkDisabled = true
             binding.resultTextTalk.visibility = View.GONE
             return
         }
         val result = textToSpeechResultText.setLanguage(locale)
         if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-            Log.e(tempTag(), "The $language Language is not supported!")
+            makeResultTextTalkDisabled = true
+            Log.e(classTag(), "The $language Language is not supported!")
             binding.resultTextTalk.visibility = View.GONE
         } else {
+            makeResultTextTalkDisabled = false
             if (!binding.resultText.text.isNullOrBlank()) {
                 binding.resultTextTalk.visibility = View.VISIBLE
             }
@@ -939,24 +850,66 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         textToSpeechSourceText?.shutdown()
         textToSpeechResultText?.shutdown()
+        val cacheImagesDir = File(cacheDir, CACHE_IMAGE_FOLDER)
+        Log.i(classTag(), "all cache file ${cacheDir.listFiles()}")
+        cacheDir.listFiles()?.forEach { file ->
+            file.delete()
+        }
+        deleteDirectory(cacheImagesDir)
+    }
+
+    private fun deleteDirectory(directory: File) {
+        if (directory.isDirectory) {
+            directory.listFiles()?.forEach { file ->
+                if (file.isDirectory) {
+                    deleteDirectory(file)
+                } else {
+                    file.delete()
+                }
+            }
+        }
+        directory.delete()
     }
 
     private fun startListening() {
         speechRecognizer!!.startListening(recognizerIntent)
     }
 
-    private fun checkVoiceRecordPermissions() {
+    private fun requestVoiceRecordPermissionIfNot(context: Context): Boolean {
         val permissionCheck =
-            ContextCompat.checkSelfPermission(applicationContext, "android.permission.RECORD_AUDIO")
-        if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(
-                this@MainActivity,
-                arrayOf("android.permission.RECORD_AUDIO"),
-                PERMISSIONS_REQUEST_RECORD_AUDIO
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+        return if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
+            requestMultiplePermissions(
+                this,
+                PERMISSIONS_REQUEST_RECORD_AUDIO,
+                Manifest.permission.RECORD_AUDIO
             )
+            false
         } else {
-            startListening()
+            true
         }
+    }
+
+    private fun requestMultiplePermissions(
+        activity: Activity,
+        requestCode: Int,
+        vararg permissions: String
+    ) {
+        ActivityCompat.requestPermissions(
+            activity,
+            permissions,
+            requestCode
+        )
+    }
+
+    private fun isPermissionPermanentlyDenied(
+        activity: Activity,
+        permission: String
+    ): Boolean {
+        return !ActivityCompat.shouldShowRequestPermissionRationale(
+            activity,
+            permission
+        )
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
@@ -967,18 +920,16 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == PERMISSIONS_REQUEST_RECORD_AUDIO) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Log.i(tempTag(), "Record permission granted")
+                Log.i(classTag(), "Record permission granted")
+                startListening()
                 return
             }
-            Toast.makeText(this, "Permission Denied!", Toast.LENGTH_SHORT).show()
-        }
-        if (requestCode == STORAGE_PERMISSION_REQUEST_CODE) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                if (Environment.isExternalStorageManager()) {
-                    getImageFromGallery.launch("image/*")
-                    return
-                }
+            if (isPermissionPermanentlyDenied(this, Manifest.permission.RECORD_AUDIO)) {
+                goToAppSettings()
+                return
             }
+            shortToast(this, getString(R.string.microphone_permission_denied))
+        } else if (requestCode == STORAGE_PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty()) {
                 val write = grantResults[0] == PackageManager.PERMISSION_GRANTED
                 val read = grantResults[1] == PackageManager.PERMISSION_GRANTED
@@ -987,13 +938,37 @@ class MainActivity : AppCompatActivity() {
                     getImageFromGallery.launch("image/*")
                     return
                 }
-                Toast.makeText(
-                    this@MainActivity,
-                    "Storage Permissions Denied",
-                    Toast.LENGTH_SHORT
-                ).show()
+                if (isPermissionPermanentlyDenied(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                    || isPermissionPermanentlyDenied(
+                        this,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    )
+                ) {
+                    goToAppSettings()
+                    return
+                }
+                shortToast(this, getString(R.string.storage_permissions_denied))
             }
+        } else if (requestCode == REQUEST_CAMERA_PERMISSION) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.i(classTag(), "camera permission granted")
+                launchCamera()
+                return
+            }
+            if (isPermissionPermanentlyDenied(this, Manifest.permission.CAMERA)) {
+                goToAppSettings()
+                return
+            }
+            shortToast(this, getString(R.string.camera_permission_denied))
         }
+    }
+
+    private fun goToAppSettings() {
+        val intent = Intent().apply {
+            action = android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+            data = Uri.fromParts("package", packageName, null)
+        }
+        startActivity(intent)
     }
 
     private fun initSpeechRecognizer() {
@@ -1002,7 +977,7 @@ class MainActivity : AppCompatActivity() {
         if (SpeechRecognizer.isRecognitionAvailable(this)) {
             speechRecognizer!!.setRecognitionListener(mRecognitionListener())
         } else {
-            Log.i(tempTag(), "Error in initialization speechRecognizer")
+            Log.i(classTag(), "Error in initialization speechRecognizer")
         }
     }
 
@@ -1040,8 +1015,7 @@ class MainActivity : AppCompatActivity() {
 
             override fun onError(errorCode: Int) {
                 // error toast here try again later
-                Log.i(tempTag(), "Error while listening to speech")
-
+                Log.i(classTag(), "Error while listening to speech")
                 // reset SpeechRecognizer
                 initSpeechRecognizer()
 //            startListening()
@@ -1085,26 +1059,16 @@ class MainActivity : AppCompatActivity() {
         binding.resultText.setRawInputType(InputType.TYPE_CLASS_TEXT)
     }
 
-    //// extra
 
-    @RequiresApi(Build.VERSION_CODES.R)
-    private val storageActivityResultLauncher: ActivityResultLauncher<Intent> =
-        registerForActivityResult(
-            ActivityResultContracts.StartActivityForResult()
-        ) {
-            if (Environment.isExternalStorageManager()) {
-                getImageFromGallery.launch("image/*")
-            }
-        }
     private val getImageFromGallery =
         registerForActivityResult(ActivityResultContracts.GetContent()) { imageUri ->
-            Log.i(tempTag(), "GOT image from gallery is $imageUri")
+            Log.i(classTag(), "GOT image from gallery is $imageUri")
             if (imageUri == null) {
-                Log.i(tempTag(), "Uri is null")
+                Log.i(classTag(), "Uri is null")
                 return@registerForActivityResult
             }
             val intent = Intent(this, CropActivity::class.java)
-            intent.putExtra("ImageURI", imageUri.toString())
+            intent.putExtra(IMAGE_URI, imageUri.toString())
             resultLauncher.launch(intent)
         }
 
@@ -1119,35 +1083,77 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (result.resultCode == RESULT_CANCELED) {
-            Log.i(tempTag(), "Crop image was cancelled")
+            Log.i(classTag(), "Crop image was cancelled")
         }
     }
 
-    private fun hasStoragePermission(context: Context): Boolean {
+    private fun requestStoragePermissionIfNot(context: Context): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             true
-        } else {
-            ContextCompat.checkSelfPermission(
+        } else if (ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.READ_EXTERNAL_STORAGE
             ) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE
             ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            true
+        } else {
+            requestForStoragePermissionsBelowAndroid11()
+            false
         }
     }
 
     private fun requestForStoragePermissionsBelowAndroid11() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             //Below android 11
-            ActivityCompat.requestPermissions(
+            requestMultiplePermissions(
                 this,
-                arrayOf(
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                    Manifest.permission.READ_EXTERNAL_STORAGE
-                ),
-                STORAGE_PERMISSION_REQUEST_CODE
+                STORAGE_PERMISSION_REQUEST_CODE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.READ_EXTERNAL_STORAGE
             )
+        }
+    }
+
+    private var latestTmpUri: Uri? = null
+
+    private val takeImageResult =
+        registerForActivityResult(ActivityResultContracts.TakePicture()) { isSuccess ->
+            if (isSuccess) {
+                latestTmpUri?.let { uri ->
+                    val intent = Intent(this, CropActivity::class.java)
+                    intent.putExtra(IMAGE_URI, uri.toString())
+                    resultLauncher.launch(intent)
+                }
+            } else {
+                Log.d(classTag(), "Camera failed")
+            }
+        }
+
+    private fun requestCameraPermissionIfNot(context: Context): Boolean {
+        return if (ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CAMERA,
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestMultiplePermissions(this, REQUEST_CAMERA_PERMISSION, Manifest.permission.CAMERA)
+            false
+        } else {
+            true
+        }
+    }
+
+    private fun launchCamera() {
+        val tempFile = FileProvider.getUriForFile(
+            this,
+            "${BuildConfig.APPLICATION_ID}.provider",
+            getTempFile(this, ".png")
+        )
+        tempFile.let { uri ->
+            latestTmpUri = uri
+            takeImageResult.launch(uri)
         }
     }
 }

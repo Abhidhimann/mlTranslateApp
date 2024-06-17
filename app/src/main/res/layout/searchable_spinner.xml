@@ -13,7 +13,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Select Language"
+        android:text="@string/choose_language_"
         android:textSize="18sp"
         android:textColor="@color/black"
         />
@@ -22,7 +22,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:id="@+id/edit_text"
-        android:hint="Search..."
+        android:hint="@string/search_bar_hint"
         android:padding="12dp"
         android:singleLine="true"
         android:layout_marginTop="8dp"

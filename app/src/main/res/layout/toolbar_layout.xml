@@ -3,14 +3,14 @@
     android:id="@+id/mainToolbar"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="?attr/colorOnPrimary"
+    android:background="@color/white"
     android:elevation="10dp"
     android:theme="@style/Theme.TempApplication">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="ML kit Translator"
+        android:text="@string/my_app_name"
         android:layout_gravity="center_horizontal"
         android:textSize="24sp"
         android:textStyle="bold"

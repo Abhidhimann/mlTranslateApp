@@ -7,4 +7,25 @@
     <string name="text_clear_des">Clear Text</string>
     <string name="translate_button_text">translate</string>
     <string name="speak_sentence">Speak Sentence</string>
+    <string name="internet_error">Please connect to internet to download model.</string>
+    <string name="select_language">Please Selected Language.</string>
+    <string name="microphone_permission_denied">MicroPhone Permission Denied!</string>
+    <string name="storage_permissions_denied">Storage Permissions Denied</string>
+    <string name="camera_permission_denied">Camera Permission Denied!</string>
+    <string name="model_download_error">Some error occurred while downloading. Please try again later.</string>
+    <string name="translation_error">Some error occurred while translating. Please try again later.</string>
+    <string name="delete_model_confirmation">Are you sure you want to delete %1$s model?</string>
+    <string name="download_model_confirmation_2">"Translation require downloading model for %1$s &amp; %2$s (&lt; 30mb). This is only one time process."</string>
+    <string name="download_model_confirmation_1">"Translation require downloading model for %1$s (&lt; 15mb). This is only one time process."</string>
+    <string name="yes">Yes</string>
+    <string name="cancel">Cancel</string>
+    <string name="crop">Crop</string>
+    <string name="reset">Reset</string>
+    <string name="select_image">Select image</string>
+    <string name="choose_language_">Select Language</string>
+    <string name="search_bar_hint">Search...</string>
+    <string name="camera">Camera</string>
+    <string name="gallery">Gallery</string>
+    <string name="my_app_name">ML kit Translator</string>
+    <string name="download_progress">Downloading model for offline translation. Please wait as this is only time process.</string>
 </resources>

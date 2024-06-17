@@ -1,5 +1,6 @@
 package com.example.tempapplication.utils
 
+import android.app.Activity
 import android.app.Dialog
 import android.content.Context
 import android.graphics.Color
@@ -17,12 +18,12 @@ import com.example.tempapplication.R
 
 object DialogUtils {
     fun dialogSearchAbleSpinnerInit(
-        context: Context, displayMetrics: DisplayMetrics,
-        supportedLanguages: Array<SupportedLanguages>,
+        activity: Activity, displayMetrics: DisplayMetrics,
+        supportedLanguages: List<SupportedLanguages>,
         availableModels: List<String>,
-        onItemClick: (SupportedLanguages) -> Unit
+        onItemClick: (SupportedLanguages) -> Unit,
     ): Dialog {
-        val customDialog = Dialog(context)
+        val customDialog = Dialog(activity)
         customDialog.setContentView(R.layout.searchable_spinner)
         val screenWidth = displayMetrics.widthPixels
         val screenHeight = displayMetrics.heightPixels
@@ -36,10 +37,9 @@ object DialogUtils {
         val listView: ListView = customDialog.findViewById(R.id.list_view)
 
         val adapter: ArrayAdapter<SupportedLanguages> = object : ArrayAdapter<SupportedLanguages>(
-            context,
+            activity,
             android.R.layout.simple_list_item_1,
             supportedLanguages
-//            translateViewModel.availLanguagesCodeToValueMap.values.filter { it != AvailLanguages.DETECT_LANG.value }
         ) {
 
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
@@ -80,15 +80,7 @@ object DialogUtils {
         })
 
         listView.setOnItemClickListener { _, _, position, _ ->
-//            binding.ToLang.setSelection(
-//                toLangSpinnerAdapter.getPosition(
-//                    adapter.getItem(
-//                        position
-//                    )
-//                )
-//            )
-//            toLangCustomDialog.dismiss()
-            onItemClick(adapter.getItem(position)?: SupportedLanguages.ENGLISH)
+            onItemClick(adapter.getItem(position) ?: SupportedLanguages.ENGLISH)
         }
         return customDialog
     }
