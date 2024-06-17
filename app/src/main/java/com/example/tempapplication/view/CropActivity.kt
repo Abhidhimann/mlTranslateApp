@@ -4,15 +4,9 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import com.canhub.cropper.databinding.CropImageActivityBinding
-import com.canhub.cropper.databinding.CropImageViewBinding
 import com.example.tempapplication.BuildConfig
-import com.example.tempapplication.R
 import com.example.tempapplication.databinding.ActivityCropBinding
 import com.example.tempapplication.utils.CACHE_IMAGE_FOLDER
 import java.io.File
