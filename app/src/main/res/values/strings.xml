@@ -1,13 +1,13 @@
 <resources>
     <string name="app_name">TempApplication</string>
     <string name="title_activity_main2">MainActivity2</string>
-    <string name="source_text_hint">Enter Text</string>
+    <string name="source_text_hint">Enter Text...</string>
     <string name="text_speech_des">Listen</string>
     <string name="text_copy_des">Copy Text</string>
     <string name="text_clear_des">Clear Text</string>
     <string name="translate_button_text">translate</string>
     <string name="speak_sentence">Speak Sentence</string>
-    <string name="internet_error">Please connect to internet to download model.</string>
+    <string name="internet_error_model">Please connect to internet to download model.</string>
     <string name="select_language">Please Selected Language.</string>
     <string name="microphone_permission_denied">MicroPhone Permission Denied!</string>
     <string name="storage_permissions_denied">Storage Permissions Denied</string>
@@ -28,4 +28,6 @@
     <string name="gallery">Gallery</string>
     <string name="my_app_name">ML kit Translator</string>
     <string name="download_progress">Downloading model for offline translation. Please wait as this is only time process.</string>
+    <string name="connect_to_internet_speechRecognizer">Please connect to internet for this feature.</string>
+    <string name="speak_now_hint">Speak Now...</string>
 </resources>

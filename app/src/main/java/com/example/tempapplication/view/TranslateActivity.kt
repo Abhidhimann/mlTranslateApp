@@ -25,7 +25,6 @@ import android.text.InputType
 import android.text.TextWatcher
 import android.util.Log
 import android.view.*
-import android.view.View.OnFocusChangeListener
 import android.view.inputmethod.EditorInfo
 import android.widget.*
 import androidx.activity.result.ActivityResultLauncher
@@ -42,6 +41,7 @@ import com.example.tempapplication.R
 import com.example.tempapplication.TranslateViewModel
 import com.example.tempapplication.databinding.ActivityMainBinding
 import com.example.tempapplication.utils.*
+import com.example.tempapplication.utils.CommonUtils.dpToPx
 import com.example.tempapplication.utils.CommonUtils.getTempFile
 import com.example.tempapplication.utils.CommonUtils.shortToast
 import com.example.tempapplication.utils.DialogUtils.dialogSearchAbleSpinnerInit
@@ -51,7 +51,6 @@ import java.util.*
 
 
 // TODO
-// layout change when keyboard
 // maybe a dialog when user Permanently denies permission
 
 class TranslateActivity : AppCompatActivity() {
@@ -90,17 +89,6 @@ class TranslateActivity : AppCompatActivity() {
         selectImageListener()
         threeDotMenuClickListener()
         translationObservers()
-        binding.sourceText.setOnClickListener {
-            Log.d(tempTag(), "click happened")
-        }
-        binding.sourceText.onFocusChangeListener = OnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) {
-                // User clicked on EditText and it gained focus
-                Log.d(tempTag(), "has focus")
-            } else {
-                Log.d(tempTag(), "lost focus")
-            }
-        }
     }
 
     private fun initialization() {
@@ -138,6 +126,7 @@ class TranslateActivity : AppCompatActivity() {
         translatedTextObserver()
         translateModelDownloadObserver()
         ocrResultObserver()
+        keyboardObserver()
     }
 
     private fun textOperationsIconsListeners() {
@@ -166,7 +155,7 @@ class TranslateActivity : AppCompatActivity() {
         }
     }
 
-    private fun threeDotMenuClickListener(){
+    private fun threeDotMenuClickListener() {
         binding.toolbar.threeDotMenu.setOnClickListener {
             popupMenu.show()
         }
@@ -192,15 +181,15 @@ class TranslateActivity : AppCompatActivity() {
         val cancelView: ImageView? = selectImageCustomDialog.findViewById(R.id.close_dialog)
         galleryView?.setOnClickListener {
             if (requestStoragePermissionIfNot(applicationContext)) {
-                getImageFromGallery.launch("image/*")
                 selectImageCustomDialog.dismiss()
+                getImageFromGallery.launch("image/*")
             }
         }
 
         cameraView?.setOnClickListener {
             if (requestCameraPermissionIfNot(applicationContext)) {
-                launchCamera()
                 selectImageCustomDialog.dismiss()
+                launchCamera()
             }
         }
 
@@ -562,6 +551,29 @@ class TranslateActivity : AppCompatActivity() {
         }
     }
 
+    // https://stackoverflow.com/questions/2150078/how-to-check-visibility-of-software-keyboard-in-android
+    private fun keyboardObserver(){
+        binding.root.viewTreeObserver
+            .addOnGlobalLayoutListener {
+                val heightDiff: Int =
+                    binding.root.rootView.height - binding.root.height
+                if (heightDiff > dpToPx(
+                        binding.root.context,
+                        200f
+                    )
+                ) {
+                    binding.sourceTextMic.visibility = View.GONE
+                    binding.selectImage.visibility = View.GONE
+                    binding.sourceTextListenStop.visibility = View.GONE
+                } else {
+                    if (binding.sourceTextListenStop.visibility != View.VISIBLE) {
+                        binding.sourceTextMic.visibility = View.VISIBLE
+                    }
+                    binding.selectImage.visibility = View.VISIBLE
+                }
+            }
+    }
+
     private fun translateText() {
         if (binding.FromLang.selectedItem == SupportedLanguages.DETECT_LANG.value
             || binding.ToLang.selectedItem == SupportedLanguages.DETECT_LANG.value
@@ -597,7 +609,7 @@ class TranslateActivity : AppCompatActivity() {
             showAlertBox(it) { userResponse ->
                 if (userResponse) {
                     if (!NetworkUtils.isNetworkAvailable(applicationContext)) {
-                        shortToast(this, getString(R.string.internet_error))
+                        shortToast(this, getString(R.string.internet_error_model))
                         return@showAlertBox
                     }
                     translateViewModel.downloadNewModels(sourceLangCode, targetLangCode)
@@ -872,6 +884,10 @@ class TranslateActivity : AppCompatActivity() {
     }
 
     private fun startListening() {
+        if (!NetworkUtils.isNetworkAvailable(applicationContext)) {
+            shortToast(this, getString(R.string.connect_to_internet_speechRecognizer))
+            return
+        }
         speechRecognizer!!.startListening(recognizerIntent)
     }
 
@@ -983,19 +999,17 @@ class TranslateActivity : AppCompatActivity() {
 
     private fun mRecognitionListener(): RecognitionListener {
         return object : RecognitionListener {
-            override fun onBeginningOfSpeech() {
-            }
+            override fun onBeginningOfSpeech() {}
 
-            override fun onRmsChanged(p0: Float) {
-            }
+            override fun onRmsChanged(p0: Float) {}
 
-            override fun onBufferReceived(buffer: ByteArray) {
-            }
+            override fun onBufferReceived(buffer: ByteArray) {}
 
             override fun onEndOfSpeech() {
                 speechRecognizer!!.stopListening()
                 binding.sourceTextListenStop.visibility = View.GONE
                 binding.sourceTextMic.visibility = View.VISIBLE
+                binding.sourceText.hint = getString(R.string.source_text_hint)
             }
 
             override fun onResults(results: Bundle) {
@@ -1021,13 +1035,12 @@ class TranslateActivity : AppCompatActivity() {
 //            startListening()
             }
 
-            override fun onEvent(arg0: Int, arg1: Bundle) {
-            }
+            override fun onEvent(arg0: Int, arg1: Bundle) {}
 
-            override fun onPartialResults(arg0: Bundle) {
-            }
+            override fun onPartialResults(arg0: Bundle) {}
 
             override fun onReadyForSpeech(arg0: Bundle) {
+                binding.sourceText.hint = getString(R.string.speak_now_hint)
                 binding.sourceTextListenStop.visibility = View.VISIBLE
                 binding.sourceTextMic.visibility = View.GONE
                 binding.sourceText.text.clear()
@@ -1036,6 +1049,7 @@ class TranslateActivity : AppCompatActivity() {
     }
 
     private fun setRecogniserIntent(selectedLanguage: String) {
+        Log.d(classTag(), "set language is $selectedLanguage")
         recognizerIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
         recognizerIntent!!.putExtra(
             RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,

@@ -2,12 +2,12 @@ package com.example.tempapplication.utils
 
 import android.app.Activity
 import android.app.Dialog
-import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.DisplayMetrics
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
@@ -28,7 +28,7 @@ object DialogUtils {
         val screenWidth = displayMetrics.widthPixels
         val screenHeight = displayMetrics.heightPixels
         customDialog.window?.setLayout(
-            (screenWidth * 0.6).toInt(),
+            (screenWidth * 0.54).toInt(),
             (screenHeight * 0.7).toInt()
         )
         customDialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -48,6 +48,7 @@ object DialogUtils {
                 val langCode = getItem(position)?.code
                 val language = getItem(position)?.value ?: SupportedLanguages.ENGLISH.value
                 textView.text = language
+                textView.setTextColor(Color.BLACK)
                 if (availableModels.contains(langCode)) {
                     textView.alpha = 1f
                 } else {

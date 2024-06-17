@@ -4,8 +4,10 @@ import android.app.Activity
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.util.TypedValue
 import android.widget.Toast
 import java.io.File
+
 
 object CommonUtils {
 
@@ -33,6 +35,11 @@ object CommonUtils {
                 deleteOnExit()
             }
         return tempFile
+    }
+
+    fun dpToPx(context: Context, valueInDp: Float): Float {
+        val metrics = context.resources.displayMetrics
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, valueInDp, metrics)
     }
 
     class TranslationFailedException(message: String) : Exception(message)
