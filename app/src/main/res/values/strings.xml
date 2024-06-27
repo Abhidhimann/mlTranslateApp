@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">TempApplication</string>
+    <string name="app_name">ML Translate</string>
     <string name="title_activity_main2">MainActivity2</string>
     <string name="source_text_hint">Enter Text...</string>
     <string name="text_speech_des">Listen</string>

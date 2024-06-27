@@ -18,6 +18,7 @@
         android:background="@drawable/round_corner"
         android:elevation="10dp"
         android:entries="@array/languages_array"
+        tools:listitem="@layout/custom_spinner_item"
         app:layout_constraintBottom_toTopOf="@id/sourceText"
         app:layout_constraintEnd_toStartOf="@+id/interchangeLang"
         app:layout_constraintStart_toStartOf="parent"
@@ -46,6 +47,7 @@
         android:entries="@array/languages_array"
         app:layout_constraintBottom_toTopOf="@id/sourceText"
         app:layout_constraintEnd_toEndOf="parent"
+        tools:listitem="@layout/custom_spinner_item"
         app:layout_constraintStart_toEndOf="@id/interchangeLang"
         app:layout_constraintTop_toBottomOf="@id/toolbar"
         app:layout_constraintWidth_percent="0.4" />
