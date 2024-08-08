@@ -1,4 +1,4 @@
-package com.example.tempapplication.utils
+package com.example.translateApp.utils
 
 enum class OcrLanguages(private vararg val languages: String) {
     LATIN(), // for now keeping latin as default, later will show toast for unsupported languages

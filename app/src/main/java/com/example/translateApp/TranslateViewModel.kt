@@ -1,4 +1,4 @@
-package com.example.tempapplication
+package com.example.translateApp
 
 import android.content.Context
 import android.net.Uri
@@ -8,10 +8,10 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.tempapplication.utils.CommonUtils
-import com.example.tempapplication.utils.SupportedLanguages
-import com.example.tempapplication.utils.OcrLanguages
-import com.example.tempapplication.utils.classTag
+import com.example.translateApp.utils.CommonUtils
+import com.example.translateApp.utils.SupportedLanguages
+import com.example.translateApp.utils.OcrLanguages
+import com.example.translateApp.utils.classTag
 import com.google.android.gms.tasks.Task
 import com.google.mlkit.common.model.DownloadConditions
 import com.google.mlkit.common.model.RemoteModelManager

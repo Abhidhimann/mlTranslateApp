@@ -1,4 +1,4 @@
-package com.example.tempapplication.view
+package com.example.translateApp.view
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -38,13 +38,13 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModelProvider
 import com.example.tempapplication.BuildConfig
 import com.example.tempapplication.R
-import com.example.tempapplication.TranslateViewModel
 import com.example.tempapplication.databinding.ActivityMainBinding
-import com.example.tempapplication.utils.*
-import com.example.tempapplication.utils.CommonUtils.dpToPx
-import com.example.tempapplication.utils.CommonUtils.getTempFile
-import com.example.tempapplication.utils.CommonUtils.shortToast
-import com.example.tempapplication.utils.DialogUtils.dialogSearchAbleSpinnerInit
+import com.example.translateApp.TranslateViewModel
+import com.example.translateApp.utils.*
+import com.example.translateApp.utils.CommonUtils.dpToPx
+import com.example.translateApp.utils.CommonUtils.getTempFile
+import com.example.translateApp.utils.CommonUtils.shortToast
+import com.example.translateApp.utils.DialogUtils.dialogSearchAbleSpinnerInit
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import java.io.File
 import java.util.*

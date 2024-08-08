@@ -1,4 +1,4 @@
-package com.example.tempapplication.utils
+package com.example.translateApp.utils
 
 import android.content.Context
 import android.net.ConnectivityManager

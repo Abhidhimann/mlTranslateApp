@@ -1,4 +1,4 @@
-package com.example.tempapplication.utils
+package com.example.translateApp.utils
 
 enum class SupportedLanguages(val code: String, val value: String){
     DETECT_LANG("und","Detect Language"),

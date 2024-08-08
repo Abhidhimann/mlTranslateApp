@@ -1,4 +1,4 @@
-package com.example.tempapplication
+package com.example.translateApp
 
 import org.junit.Test
 

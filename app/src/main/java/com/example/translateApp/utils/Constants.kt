@@ -1,4 +1,4 @@
-package com.example.tempapplication.utils
+package com.example.translateApp.utils
 
 fun Any.classTag(): String = this::class.java.simpleName
 
